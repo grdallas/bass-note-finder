@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Note Finder — Bass</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg:      #0a0c0f;
+  --surface: #111520;
+  --border:  #1e2535;
+  --faded:   #3a4a62;
+  --dim:     #5a6e8a;
+  --text:    #c8d8f0;
+  --accent:  #f5c842;
+  --green:   #6bef9f;
+  --string1: #c8a96e;  /* G string */
+  --string2: #9eb8d8;  /* D string */
+  --string3: #d88a6e;  /* A string */
+  --string4: #8eb898;  /* E string */
+}
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  overscroll-behavior: none;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 40px 20px 60px;
+  gap: 0;
+}
+
+header { text-align: center; margin-bottom: 40px; }
+.title {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(28px, 7vw, 44px);
+  color: var(--text);
+  letter-spacing: 2px;
+}
+.subtitle {
+  font-size: 10px;
+  color: var(--faded);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* ── Big note display ── */
+.note-display {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(110px, 30vw, 180px);
+  font-weight: 300;
+  line-height: 1;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: -4px;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  user-select: none;
+  transition: opacity .2s;
+}
+.note-display.hidden { opacity: 0; }
+
+.octave-display {
+  font-size: 11px;
+  color: var(--faded);
+  letter-spacing: 3px;
+  text-align: center;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  min-height: 16px;
+}
+
+.freq-display {
+  font-size: 11px;
+  color: var(--faded);
+  letter-spacing: 2px;
+  text-align: center;
+  margin-bottom: 40px;
+  min-height: 16px;
+}
+
+/* ── Buttons ── */
+.btn-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+button {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  border: 1px solid var(--faded);
+  background: transparent;
+  color: var(--text);
+}
+button:active { transform: scale(.96); }
+button:hover { border-color: var(--text); }
+.btn-play {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(245,200,66,.06);
+  font-size: 13px;
+  padding: 16px 36px;
+}
+.btn-play:hover { background: rgba(245,200,66,.14); }
+.btn-reveal {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(107,239,159,.05);
+}
+.btn-reveal:hover { background: rgba(107,239,159,.12); }
+.btn-reveal:disabled {
+  opacity: .25;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-drone {
+  border-color: var(--dim);
+  color: var(--dim);
+  background: transparent;
+}
+.btn-drone:hover { border-color: var(--text); color: var(--text); }
+.btn-drone.drone-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(245,200,66,.08);
+}
+
+/* ── Range selector ── */
+.range-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.range-btn {
+  font-size: 10px;
+  padding: 7px 14px;
+  letter-spacing: 1px;
+  opacity: .5;
+}
+.range-btn.selected {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(245,200,66,.06);
+}
+
+/* ── Fretboard ── */
+.fretboard-wrap {
+  width: 100%;
+  max-width: 680px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .3s, transform .3s;
+  margin-bottom: 32px;
+}
+.fretboard-wrap.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.fretboard-label {
+  font-size: 9px;
+  color: var(--faded);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.fretboard {
+  position: relative;
+  background: #1a1208;
+  border: 1px solid #2e2010;
+  border-radius: 6px;
+  padding: 20px 16px;
+  overflow-x: auto;
+}
+
+/* Fret lines */
+.frets {
+  position: relative;
+  height: 110px;
+  min-width: 560px;
+}
+.fret-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: #4a3820;
+  border-radius: 1px;
+}
+.fret-line.nut {
+  width: 5px;
+  background: #c8a96e;
+  left: 0;
+}
+/* Fret position dots */
+.fret-dot {
+  position: absolute;
+  bottom: -16px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #2a1e10;
+  transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px;
+  color: #4a3820;
+}
+.fret-dot.marker {
+  background: #3a2814;
+  color: #6a4828;
+}
+
+/* Strings */
+.string-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  border-radius: 1px;
+  cursor: default;
+}
+.string-line.s1 { top: 16px;  background: var(--string1); height: 1.5px; opacity: .6; }
+.string-line.s2 { top: 40px;  background: var(--string2); height: 2px;   opacity: .65; }
+.string-line.s3 { top: 64px;  background: var(--string3); height: 2.5px; opacity: .7; }
+.string-line.s4 { top: 88px;  background: var(--string4); height: 3px;   opacity: .75; }
+
+/* String labels */
+.string-labels {
+  position: absolute;
+  left: -32px; top: 0;
+  height: 110px;
+}
+.string-label {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 500;
+  transform: translateY(-50%);
+  letter-spacing: 1px;
+}
+.string-label.s1 { top: 16px;  color: var(--string1); }
+.string-label.s2 { top: 40px;  color: var(--string2); }
+.string-label.s3 { top: 64px;  color: var(--string3); }
+.string-label.s4 { top: 88px;  color: var(--string4); }
+
+/* Note markers on fretboard */
+.note-marker {
+  position: absolute;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  transition: all .2s;
+  border: 2px solid transparent;
+}
+.note-marker.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(245,200,66,.4);
+}
+.note-marker.octave-marker {
+  background: rgba(245,200,66,.15);
+  color: var(--accent);
+  border-color: rgba(245,200,66,.4);
+}
+
+/* Location list */
+.locations {
+  margin-top: 24px;
+  width: 100%;
+  max-width: 680px;
+  opacity: 0;
+  transition: opacity .3s .1s;
+}
+.locations.visible { opacity: 1; }
+.locations-label {
+  font-size: 9px;
+  color: var(--faded);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.location-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.location-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 11px;
+}
+.chip-string { font-weight: 500; }
+.chip-string.s1 { color: var(--string1); }
+.chip-string.s2 { color: var(--string2); }
+.chip-string.s3 { color: var(--string3); }
+.chip-string.s4 { color: var(--string4); }
+.chip-fret { color: var(--dim); }
+.chip-open {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">Note Finder</div>
+  <div class="subtitle">Electric Bass — 4 String</div>
+</header>
+
+<!-- Note display -->
+<div class="note-display" id="note-display">?</div>
+<div class="octave-display" id="octave-display"></div>
+<div class="freq-display" id="freq-display"></div>
+
+<!-- Range selector -->
+<div class="range-row">
+  <button class="range-btn selected" onclick="setRange('open',this)">Open Position</button>
+  <button class="range-btn" onclick="setRange('mid',this)">Mid Neck</button>
+  <button class="range-btn" onclick="setRange('full',this)">Full Range</button>
+</div>
+
+<!-- Buttons -->
+<div class="btn-row">
+  <button class="btn-play" id="btn-play" onclick="playNote()">▶ Play Note</button>
+  <button class="btn-drone" id="btn-drone" onclick="toggleDrone()">∞ Drone</button>
+  <button class="btn-reveal" id="btn-reveal" onclick="reveal()" disabled>Reveal Answer</button>
+  <button onclick="nextNote()">Next →</button>
+</div>
+
+<!-- Fretboard -->
+<div class="fretboard-wrap" id="fretboard-wrap">
+  <div class="fretboard-label">Locations on the bass</div>
+  <div class="fretboard">
+    <div class="frets" id="frets">
+      <!-- generated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Location chips -->
+<div class="locations" id="locations">
+  <div class="locations-label">All positions</div>
+  <div class="location-list" id="location-list"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  AUDIO
+// ═══════════════════════════════════════
+let actx = null;
+
+function initAudio() {
+  if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  // iOS silent buffer unlock
+  const buf = actx.createBuffer(1,1,22050);
+  const src = actx.createBufferSource();
+  src.buffer = buf; src.connect(actx.destination); src.start(0);
+}
+
+document.addEventListener('touchstart', function u() {
+  initAudio(); document.removeEventListener('touchstart', u);
+}, { passive: true });
+
+function playFreq(freq, dur = 4.0) {
+  if (!actx) return;
+  const now = actx.currentTime + 0.01;
+
+  const freqs = [freq, freq*2, freq*3, freq*4];
+  const amps  = [0.7,  0.35,   0.15,   0.06];
+
+  const master = actx.createGain();
+  master.connect(actx.destination);
+
+  freqs.forEach((f, i) => {
+    const osc  = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = i === 0 ? 'sine' : 'triangle';
+    osc.frequency.value = f;
+    osc.connect(gain); gain.connect(master);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(amps[i], now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(amps[i] * 0.6, now + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    osc.start(now); osc.stop(now + dur + 0.1);
+  });
+
+  master.gain.setValueAtTime(0.6, now);
+  master.gain.exponentialRampToValueAtTime(0.001, now + dur);
+}
+
+// ── Drone ──
+let droneNodes = [];
+let droneOn = false;
+
+function startDrone(freq) {
+  if (!actx) return;
+  stopDrone();
+  droneOn = true;
+
+  const freqs = [freq, freq*2, freq*3];
+  const amps  = [0.45, 0.2,   0.08];
+  const master = actx.createGain();
+  master.gain.value = 0.5;
+  master.connect(actx.destination);
+
+  const nodes = [master];
+  freqs.forEach((f, i) => {
+    const osc  = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = f;
+    gain.gain.value = amps[i];
+    osc.connect(gain); gain.connect(master);
+    osc.start();
+    nodes.push(osc, gain);
+  });
+
+  // Slow fade in
+  master.gain.setValueAtTime(0, actx.currentTime);
+  master.gain.linearRampToValueAtTime(0.5, actx.currentTime + 0.4);
+  droneNodes = nodes;
+}
+
+function stopDrone() {
+  if (!droneNodes.length) return;
+  const master = droneNodes[0];
+  if (actx) {
+    master.gain.setValueAtTime(master.gain.value, actx.currentTime);
+    master.gain.linearRampToValueAtTime(0, actx.currentTime + 0.3);
+    setTimeout(() => {
+      droneNodes.forEach(n => { try { n.disconnect(); if (n.stop) n.stop(); } catch(e){} });
+      droneNodes = [];
+    }, 350);
+  } else {
+    droneNodes = [];
+  }
+  droneOn = false;
+}
+
+function toggleDrone() {
+  initAudio();
+  const btn = document.getElementById('btn-drone');
+  if (droneOn) {
+    stopDrone();
+    btn.textContent = '∞ Drone';
+    btn.classList.remove('drone-active');
+  } else {
+    if (!currentNote) return;
+    startDrone(midiToFreq(currentNote.midi));
+    btn.textContent = '■ Stop Drone';
+    btn.classList.add('drone-active');
+  }
+}
+
+// ═══════════════════════════════════════
+//  BASS THEORY
+// ═══════════════════════════════════════
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// For display, prefer flats for certain notes
+const DISPLAY_NAMES = {
+  'C#':'C#/D♭', 'D#':'D#/E♭', 'F#':'F#/G♭', 'G#':'G#/A♭', 'A#':'A#/B♭'
+};
+
+function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+function midiToNote(m) {
+  const name = NOTE_NAMES[m % 12];
+  const oct  = Math.floor(m / 12) - 1;
+  return { name, oct, display: DISPLAY_NAMES[name] || name, midi: m };
+}
+
+// Bass strings: standard tuning E1 A1 D2 G2
+// MIDI: E1=28, A1=33, D2=38, G2=43
+const STRINGS = [
+  { name: 'G', midi: 43, cls: 's1', top: 16 },
+  { name: 'D', midi: 38, cls: 's2', top: 40 },
+  { name: 'A', midi: 33, cls: 's3', top: 64 },
+  { name: 'E', midi: 28, cls: 's4', top: 88 },
+];
+const NUM_FRETS = 12;
+
+// Find all positions for a given midi note on the bass
+function findPositions(midi) {
+  const positions = [];
+  STRINGS.forEach((str, si) => {
+    for (let fret = 0; fret <= NUM_FRETS; fret++) {
+      if (str.midi + fret === midi) {
+        positions.push({ string: str, stringIdx: si, fret, midi });
+      }
+    }
+  });
+  // Also find octave equivalents (same note, different octave)
+  const octaves = [];
+  STRINGS.forEach((str, si) => {
+    for (let fret = 0; fret <= NUM_FRETS; fret++) {
+      const m = str.midi + fret;
+      if (m !== midi && (m % 12) === (midi % 12)) {
+        octaves.push({ string: str, stringIdx: si, fret, midi: m, isOctave: true });
+      }
+    }
+  });
+  return { primary: positions, octaves };
+}
+
+// ═══════════════════════════════════════
+//  RANGES
+// ═══════════════════════════════════════
+const RANGES = {
+  open: { min: 28, max: 43 },   // open strings to ~5th fret range
+  mid:  { min: 33, max: 52 },   // A string to ~12th fret
+  full: { min: 28, max: 55 },   // full bass range
+};
+let currentRange = 'open';
+
+function setRange(r, btn) {
+  currentRange = r;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  nextNote();
+}
+
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let currentNote = null;
+let revealed = false;
+
+function pickNote() {
+  const range = RANGES[currentRange];
+  // Only pick notes that exist on the bass in this range
+  const candidates = [];
+  for (let m = range.min; m <= range.max; m++) {
+    // Check at least one position exists
+    const pos = findPositions(m);
+    if (pos.primary.length > 0) candidates.push(m);
+  }
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function nextNote() {
+  revealed = false;
+  stopDrone();
+  const droneBtn = document.getElementById('btn-drone');
+  if (droneBtn) { droneBtn.textContent = '∞ Drone'; droneBtn.classList.remove('drone-active'); }
+  const midi = pickNote();
+  currentNote = midiToNote(midi);
+  document.getElementById('note-display').textContent = '?';
+  document.getElementById('note-display').classList.remove('hidden');
+  document.getElementById('octave-display').textContent = '';
+  document.getElementById('freq-display').textContent = '';
+  document.getElementById('btn-reveal').disabled = false;
+  document.getElementById('fretboard-wrap').classList.remove('visible');
+  document.getElementById('locations').classList.remove('visible');
+  document.getElementById('location-list').innerHTML = '';
+  clearMarkers();
+}
+
+function playNote() {
+  initAudio();
+  if (!currentNote) nextNote();
+  playFreq(midiToFreq(currentNote.midi));
+  // Flash the ? to show it played
+  const el = document.getElementById('note-display');
+  el.classList.add('hidden');
+  setTimeout(() => el.classList.remove('hidden'), 80);
+}
+
+function reveal() {
+  if (!currentNote || revealed) return;
+  revealed = true;
+
+  document.getElementById('note-display').textContent = currentNote.display;
+  document.getElementById('octave-display').textContent = `Octave ${currentNote.oct}`;
+  document.getElementById('freq-display').textContent = `${midiToFreq(currentNote.midi).toFixed(1)} Hz`;
+
+  const { primary, octaves } = findPositions(currentNote.midi);
+  drawMarkers(primary, octaves);
+  buildChips(primary, octaves);
+
+  document.getElementById('fretboard-wrap').classList.add('visible');
+  document.getElementById('locations').classList.add('visible');
+
+  // Play the note again on reveal
+  playFreq(midiToFreq(currentNote.midi));
+}
+
+// ═══════════════════════════════════════
+//  FRETBOARD DRAWING
+// ═══════════════════════════════════════
+const FRET_MARKERS = [3,5,7,9,12];
+const FRET_WIDTH = 44; // px per fret
+const FRET_START = 40; // px offset for nut + labels
+
+function buildFretboard() {
+  const frets = document.getElementById('frets');
+  frets.innerHTML = '';
+
+  // Nut
+  const nut = document.createElement('div');
+  nut.className = 'fret-line nut';
+  nut.style.left = FRET_START + 'px';
+  frets.appendChild(nut);
+
+  // Fret lines
+  for (let f = 1; f <= NUM_FRETS; f++) {
+    const line = document.createElement('div');
+    line.className = 'fret-line';
+    line.style.left = (FRET_START + f * FRET_WIDTH) + 'px';
+    frets.appendChild(line);
+
+    // Fret number dot
+    const dot = document.createElement('div');
+    dot.className = 'fret-dot' + (FRET_MARKERS.includes(f) ? ' marker' : '');
+    dot.style.left = (FRET_START + (f - 0.5) * FRET_WIDTH) + 'px';
+    dot.textContent = f;
+    frets.appendChild(dot);
+  }
+
+  // Open string label (fret 0)
+  const openDot = document.createElement('div');
+  openDot.className = 'fret-dot marker';
+  openDot.style.left = (FRET_START - 4) + 'px';
+  openDot.textContent = '0';
+  frets.appendChild(openDot);
+
+  // Strings
+  STRINGS.forEach(str => {
+    const line = document.createElement('div');
+    line.className = `string-line ${str.cls}`;
+    frets.appendChild(line);
+  });
+
+  // String labels
+  const labelWrap = document.createElement('div');
+  labelWrap.className = 'string-labels';
+  labelWrap.style.position = 'absolute';
+  labelWrap.style.left = '6px';
+  labelWrap.style.top = '0';
+  STRINGS.forEach(str => {
+    const lbl = document.createElement('div');
+    lbl.className = `string-label ${str.cls}`;
+    lbl.style.top = str.top + 'px';
+    lbl.textContent = str.name;
+    labelWrap.appendChild(lbl);
+  });
+  frets.appendChild(labelWrap);
+}
+
+function clearMarkers() {
+  document.querySelectorAll('.note-marker').forEach(m => m.remove());
+}
+
+function fretX(fret) {
+  if (fret === 0) return FRET_START - 4;
+  return FRET_START + (fret - 0.5) * FRET_WIDTH;
+}
+
+function drawMarkers(primary, octaves) {
+  clearMarkers();
+  const frets = document.getElementById('frets');
+
+  [...primary.map(p => ({...p, isPrimary: true})), ...octaves].forEach(pos => {
+    const marker = document.createElement('div');
+    marker.className = 'note-marker ' + (pos.isPrimary ? 'primary' : 'octave-marker');
+    marker.style.left = fretX(pos.fret) + 'px';
+    marker.style.top  = pos.string.top + 'px';
+    marker.textContent = pos.fret === 0 ? 'O' : pos.fret;
+    frets.appendChild(marker);
+  });
+}
+
+function buildChips(primary, octaves) {
+  const list = document.getElementById('location-list');
+  list.innerHTML = '';
+  primary.forEach(pos => {
+    const chip = document.createElement('div');
+    chip.className = 'location-chip';
+    chip.innerHTML = `
+      <span class="chip-string ${pos.string.cls}">${pos.string.name} string</span>
+      <span class="chip-fret">${pos.fret === 0 ? '' : `fret ${pos.fret}`}</span>
+      ${pos.fret === 0 ? '<span class="chip-open">Open</span>' : ''}
+    `;
+    list.appendChild(chip);
+  });
+}
+
+// ═══════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════
+buildFretboard();
+nextNote();
+</script>
+</body>
+</html>
